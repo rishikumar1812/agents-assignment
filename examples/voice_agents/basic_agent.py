@@ -1,5 +1,6 @@
 import logging
 
+
 from dotenv import load_dotenv
 
 from livekit.agents import (
@@ -18,6 +19,12 @@ from livekit.agents.llm import function_tool
 from livekit.plugins import silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
+# Interruption configuration
+
+IGNORE_WORDS = {"yeah", "ok", "okay", "hmm", "uh", "uh-huh", "right", "aha"}
+INTERRUPT_WORDS = {"stop", "wait", "pause", "no"}
+INTERRUPT_PHRASES = {"hold on"}
+
 # uncomment to enable Krisp background voice/noise cancellation
 # from livekit.plugins import noise_cancellation
 
@@ -29,38 +36,65 @@ load_dotenv()
 class MyAgent(Agent):
     def __init__(self) -> None:
         super().__init__(
-            instructions="Your name is Kelly. You would interact with users via voice."
-            "with that in mind keep your responses concise and to the point."
-            "do not use emojis, asterisks, markdown, or other special characters in your responses."
-            "You are curious and friendly, and have a sense of humor."
-            "you will speak english to the user",
+            instructions=(
+                "Your name is Kelly. You interact with users via voice. "
+                "Keep responses concise and to the point. "
+                "Do not use emojis, markdown, or special characters. "
+                "You are curious, friendly, and speak English."
+            ),
         )
+        self.is_speaking = False
 
     async def on_enter(self):
-        # when the agent is added to the session, it'll generate a reply
-        # according to its instructions
         self.session.generate_reply()
 
-    # all functions annotated with @function_tool will be passed to the LLM when this
-    # agent is active
+    # --- Track agent speaking state ---
+    async def on_agent_speech_start(self):
+        self.is_speaking = True
+
+    async def on_agent_speech_end(self):
+        self.is_speaking = False
+
+    # --- Core interruption logic ---
+    async def on_user_speech(self, transcript: str):
+        text = transcript.lower().strip()
+
+        logger.info(
+            f"[INTERRUPT] speaking={self.is_speaking} text='{text}'"
+        )
+        # Normalize tokens safely (handles punctuation)
+        tokens = [t.strip(".,!?") for t in text.split()]
+
+        # Agent is speaking
+        if self.is_speaking:
+            # Hard interrupt (semantic command)
+            if (
+                any(phrase in text for phrase in INTERRUPT_PHRASES)
+                or any(word in tokens for word in INTERRUPT_WORDS)
+            ):
+                await self.session.stop_speaking()
+                await self.session.handle_user_input(transcript)
+                return
+
+            # Backchannel only → IGNORE COMPLETELY
+            if tokens and all(t in IGNORE_WORDS for t in tokens):
+                return
+
+            # Mixed or meaningful speech → interrupt
+            await self.session.stop_speaking()
+            await self.session.handle_user_input(transcript)
+            return
+
+        # Agent is silent → normal behavior
+        await self.session.handle_user_input(transcript)
+
     @function_tool
     async def lookup_weather(
         self, context: RunContext, location: str, latitude: str, longitude: str
     ):
-        """Called when the user asks for weather related information.
-        Ensure the user's location (city or region) is provided.
-        When given a location, please estimate the latitude and longitude of the location and
-        do not ask the user for them.
-
-        Args:
-            location: The location they are asking for
-            latitude: The latitude of the location, do not ask user for it
-            longitude: The longitude of the location, do not ask user for it
-        """
-
         logger.info(f"Looking up weather for {location}")
-
         return "sunny with a temperature of 70 degrees."
+
 
 
 server = AgentServer()
