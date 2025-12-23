@@ -80,6 +80,47 @@ The implementation follows these principles:
 
 This approach ensures smooth, real-time conversations while preserving the ability for users to intentionally interrupt the agent when needed.
 
+## Proof of Intelligent Interruption Handling (Log Transcript)
+
+The following transcript illustrates the expected runtime behavior of the agent
+based on the implemented state-aware interruption handling logic.  
+This log transcript demonstrates how the same user input is handled differently
+depending on whether the agent is speaking or silent.
+
+### Scenario 1: Passive backchannel ignored while agent is speaking
+
+```
+[Agent] Started speaking
+[User] "yeah"
+[Decision] Backchannel detected while agent speaking → ignored
+[Agent] Continuing speech
+```
+
+Result: The agent continues speaking seamlessly without pausing or stopping.
+
+### Scenario 2: Passive acknowledgement processed while agent is silent
+
+```
+[Agent] Finished speaking
+[User] "yeah"
+[Decision] Agent is silent → input processed normally
+[Agent] Responding to user
+```
+
+Result: The agent treats "yeah" as valid input and responds normally.
+
+### Scenario 3: Explicit interruption command stops agent speech
+
+```
+[Agent] Started speaking
+[User] "stop"
+[Decision] Interrupt command detected → stopping agent speech
+```
+
+Result: The agent immediately stops speaking and listens for further input.
+
+
+
 ### Implementation Location
 
 The state-aware interruption logic is implemented in:
