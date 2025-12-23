@@ -80,6 +80,23 @@ The implementation follows these principles:
 
 This approach ensures smooth, real-time conversations while preserving the ability for users to intentionally interrupt the agent when needed.
 
+### Implementation Location
+
+The state-aware interruption logic is implemented in:
+
+examples/voice_agents/basic_agent.py
+
+This file extends the default voice agent example with:
+- Speaking state tracking
+- Backchannel filtering
+- Semantic interruption detection
+
+### Assignment Notes
+
+- No changes were made to the underlying VAD implementation
+- All interruption handling logic is applied at the agent level
+- The same word (e.g. "yeah") behaves differently based on agent speaking state
+
 
 ## Installation
 
