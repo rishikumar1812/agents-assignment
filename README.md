@@ -42,6 +42,45 @@ agents that can see, hear, and understand.
 - **Builtin test framework**: Write tests and use judges to ensure your agent is performing as expected.
 - **Open-source**: Fully open-source, allowing you to run the entire stack on your own servers, including [LiveKit server](https://github.com/livekit/livekit), one of the most widely used WebRTC media servers.
 
+## Intelligent Interruption Handling (Assignment Implementation)
+
+This repository includes an implementation of **state-aware interruption handling** for a real-time voice agent, created as part of the LiveKit Intelligent Interruption Handling challenge.
+
+### Problem
+In real-time voice interactions, Voice Activity Detection (VAD) can be overly sensitive and may falsely interrupt the agent when users provide passive acknowledgements such as "yeah", "ok", or "hmm". This results in abrupt cut-offs during important agent responses.
+
+### Solution Overview
+A logic layer is implemented at the agent level to distinguish **passive acknowledgements** from **intentional interruptions**, based on whether the agent is currently speaking.
+
+The implementation follows these principles:
+
+- **State-aware filtering**  
+  The agent tracks its speaking state and only applies interruption logic while it is actively speaking.
+
+- **Backchannel handling**  
+  Passive acknowledgement words (e.g., "yeah", "ok", "hmm") are ignored while the agent is speaking, allowing speech to continue seamlessly without pauses or stuttering.
+
+- **Semantic interruption detection**  
+  Explicit commands such as "stop", "wait", or mixed inputs like "yeah wait" are treated as valid interruptions and immediately stop the agent’s speech.
+
+- **STT-based decision making**  
+  Interruption decisions are made after receiving the final Speech-to-Text (STT) transcript rather than reacting directly to raw VAD signals. This prevents false-positive interruptions caused by short filler words.
+
+- **No VAD modification**  
+  The low-level VAD system remains unchanged. All logic is implemented within the agent’s event loop, as required.
+
+### Behavior Summary
+
+| User Input | Agent State | Result |
+|-----------|------------|--------|
+| "yeah", "ok", "hmm" | Speaking | Ignored |
+| "stop", "wait", "no" | Speaking | Interrupt |
+| "yeah", "ok" | Silent | Processed normally |
+| "start", "hello" | Silent | Normal response |
+
+This approach ensures smooth, real-time conversations while preserving the ability for users to intentionally interrupt the agent when needed.
+
+
 ## Installation
 
 To install the core Agents library, along with plugins for popular model providers:
